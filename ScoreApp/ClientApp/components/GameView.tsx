@@ -1,77 +1,73 @@
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
+import { withRouter } from 'react-router';
 import 'isomorphic-fetch';
-import { withRouter } from 'react-router-dom'
 
-interface GameEditState {
-    games: Game[];
-    loadingState: number;
-    newGame: string;
-    possibleTeams: Team[];
-    newTeamName: string;
+interface GameState {
+    gameId: string;
+    gameData: Game;
+    scoreInput: number;
+    loading: boolean;
 }
 
-export class GameView extends React.Component<RouteComponentProps<{}>, GameEditState> {
-    constructor() {
-        super();
-        this.state = { games: [], loadingState: 0, newGame: '', possibleTeams: [], newTeamName: '' };
+var tempGame: Game = {
+    id: 0,
+    created: '',
+    deleted: true,
+    ended: '',
+    name: 'test',
+    playingRounds: [],
+    started: '',
+    teams: []
+}
 
-        fetch('api/Game')
-            .then(response => response.json() as Promise<Game[]>)
+
+export class GameView extends React.Component<RouteComponentProps<{}>, GameState> {
+    constructor(props: any) {
+        super(props);
+        var pathGameId = this.props.location.pathname.substr(6);
+        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, scoreInput: 0 };
+
+        fetch('api/game/' + this.state.gameId + '/all')
+            .then(response => response.json() as Promise<Game>)
             .then(data => {
-                this.setState({ games: data, loadingState: this.state.loadingState + 1 });
+                this.setState({ gameData: data, loading: false});
             });
     }
 
     public render() {
-        let contents = this.state.loadingState < 1
+        let contents = this.state.loading
             ? <p><em>Loading...</em></p>
-            : this.renderForecastsTable(this.state.games);
+            : this.renderForecastsTable(this.state.gameData.playingRounds);
 
         return <div>
-            <h1>Games</h1>
-            <p>Create, edit or delete Games.</p>
+            <h1>{this.state.gameData.name}</h1>
+            <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(',')}</p>
+            <p>Round:</p>
             {contents}
             <form>
                 <div className="form-group row">
                     <div className="col-sm-6">
-                        <input type="text" className="form-control" value={this.state.newGame} onChange={this.handleChange.bind(this)}></input>
+                        <input type="number" className="form-control" value={this.state.scoreInput} onChange={this.handleChange.bind(this)}></input>
                     </div>
-                    <button type="button" className="btn btn-primary col-sm-2" onClick={() => { this.addGame() }}>Add Team</button>
+                    <button type="button" className="btn btn-primary col-sm-2" onClick={() => { this.setScore() }}>Add Team</button>
                 </div>
             </form>
         </div>;
     }
 
-    private renderForecastsTable(games: Game[]) {
+    private renderForecastsTable(rounds: Round[]) {
         return <table className='table'>
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Created</th>
-                    <th>Teams</th>
-                    <th>Rounds</th>
-                    <th>Started</th>
-                    <th>Ended</th>
+                    <th>Games Played</th>
+                    <th>Games Won</th>
                 </tr>
             </thead>
             <tbody>
-            {games.map(game =>
-                <tr key={ game.id }>
-                        <td>{game.name}</td>
-                        <td>{game.created}</td>
-                        <td>{game.teams.map(t =>
-                                <span>{t.name}<button>x</button></span>
-                            )}
-                            <div className="input-group">
-                                <span className="input-group-btn">
-                                    <button className="btn btn-secondary" type="button" onClick={() => { this.props.history.push('/team/' + game.id) }}>Edit Team</button>
-                                </span>
-                            </div>
-                        </td>
-                        <td>{game.playingRounds.map(r => r.teams.join('vs')).join(', ')}</td>
-                        <td>{game.started}</td>
-                        <td>{game.ended}</td>
+               {rounds.map(rounds =>
+                    <tr key={rounds.id }>
                 </tr>
             )}
             </tbody>
@@ -79,68 +75,31 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameEditS
     }
 
     handleChange(event: any) {
-        console.log(event.target.value);
-        this.setState({ newGame: event.target.value });
+        this.setState({ scoreInput: event.target.value })
     }
 
-    setNewTeamName(event: any) {
-        console.log(event.target.value);
-        this.setState({ newTeamName: event.target.value });
-    }
-
-    addGame() {
-        var game: Game = {
+    setScore() {
+        var team: Team = {
             id: 0,
-            name: this.state.newGame,
-            teams: [],
-            playingRounds: [],
+            name: '',
+            gamesPlayed: 0,
+            gamesWon: 0,
             deleted: false
         };
-        fetch('api/Game', {
+        fetch('api/' + this.state.gameId + '/team', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(game),
+            body: JSON.stringify(team),
         }).then(response => {
             return response.json();
         }).then((response) => {
             console.log(JSON.stringify(response));
-            var newGames = this.state.games;
-            newGames.push(response);
-            this.setState({ games: newGames, newGame: '' });
+            //var newTeams = this.state.teams;
+            //newTeams.push(response);
+            //this.setState({ teams: newTeams });
         });
-    }
-
-    addTeam(gameid: number) {
-        if (this.state.newTeamName.length == 0) {
-            console.log('TeamLength is 0');
-            return;
-        }
-
-        var fileteredTeams = this.state.possibleTeams.forEach(t => {
-            if (t.name == this.state.newTeamName) {
-                this.state.games.forEach(g => {
-                    if (g.id == gameid) {
-                        console.log('Found gameid ' + g.id);
-                        g.teams.push(t);
-
-                        fetch('api/Game/' + g.id, {
-                            method: 'PUT',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(g),
-                        }).then(response => {
-                            console.log(JSON.stringify(response));
-                        });
-                    }
-                });
-            }
-        });
-        
-        console.log(gameid);
     }
 }

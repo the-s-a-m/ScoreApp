@@ -1,4 +1,8 @@
-﻿interface Team {
+﻿interface Dictionary<T> {
+    [Key: string]: T
+}
+
+interface Team {
     id: number;
     name: string;
     gamesPlayed: number;
@@ -8,13 +12,13 @@
 
 interface Round {
     id: number;
-    teams: Team[];
+    roundScores: Dictionary<number>; 
     deleted: boolean;
 }
 
 interface Game {
     id: number;
-    created?: string;
+    created: string;
     started?: string;
     ended?: string;
     name: string;

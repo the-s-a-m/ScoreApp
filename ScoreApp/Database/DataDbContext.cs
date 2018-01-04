@@ -20,21 +20,5 @@ namespace ScoreApp.Database
 
         public DbSet<Round> Rounds { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<TeamRound>()
-                .HasKey(bc => new { bc.RoundId, bc.TeamId });
-
-            modelBuilder.Entity<TeamRound>()
-                .HasOne(bc => bc.Round)
-                .WithMany(b => b.Teams)
-                .HasForeignKey(bc => bc.RoundId);
-
-            modelBuilder.Entity<TeamRound>()
-                .HasOne(bc => bc.Team)
-                .WithMany(c => c.Rounds)
-                .HasForeignKey(bc => bc.TeamId);
-        }
-
     }
 }

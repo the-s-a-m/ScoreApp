@@ -32,7 +32,8 @@ namespace ScoreApp.Migrations
                     ID = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Deleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                    GameID = table.Column<long>(type: "INTEGER", nullable: false)
+                    GameID = table.Column<long>(type: "INTEGER", nullable: false),
+                    RoundScoresJSON = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -52,7 +53,7 @@ namespace ScoreApp.Migrations
                     ID = table.Column<long>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Deleted = table.Column<bool>(type: "INTEGER", nullable: false),
-                    GameID = table.Column<long>(type: "INTEGER", nullable: true),
+                    GameID = table.Column<long>(type: "INTEGER", nullable: false),
                     GamesPlayed = table.Column<int>(type: "INTEGER", nullable: false),
                     GamesWon = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<string>(type: "TEXT", maxLength: 40, nullable: false)
@@ -65,30 +66,6 @@ namespace ScoreApp.Migrations
                         column: x => x.GameID,
                         principalTable: "Games",
                         principalColumn: "ID",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "TeamRound",
-                columns: table => new
-                {
-                    RoundId = table.Column<long>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<long>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TeamRound", x => new { x.RoundId, x.TeamId });
-                    table.ForeignKey(
-                        name: "FK_TeamRound_Rounds_RoundId",
-                        column: x => x.RoundId,
-                        principalTable: "Rounds",
-                        principalColumn: "ID",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_TeamRound_Teams_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Teams",
-                        principalColumn: "ID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -98,11 +75,6 @@ namespace ScoreApp.Migrations
                 column: "GameID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_TeamRound_TeamId",
-                table: "TeamRound",
-                column: "TeamId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Teams_GameID",
                 table: "Teams",
                 column: "GameID");
@@ -110,9 +82,6 @@ namespace ScoreApp.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "TeamRound");
-
             migrationBuilder.DropTable(
                 name: "Rounds");
 

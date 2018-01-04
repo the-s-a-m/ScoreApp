@@ -11,7 +11,7 @@ using System;
 namespace ScoreApp.Migrations
 {
     [DbContext(typeof(DataDbContext))]
-    [Migration("20180103131145_initial")]
+    [Migration("20180104201401_initial")]
     partial class initial
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,6 +51,9 @@ namespace ScoreApp.Migrations
 
                     b.Property<long>("GameID");
 
+                    b.Property<string>("RoundScoresJSON")
+                        .IsRequired();
+
                     b.HasKey("ID");
 
                     b.HasIndex("GameID");
@@ -65,7 +68,7 @@ namespace ScoreApp.Migrations
 
                     b.Property<bool>("Deleted");
 
-                    b.Property<long?>("GameID");
+                    b.Property<long>("GameID");
 
                     b.Property<int>("GamesPlayed");
 
@@ -82,19 +85,6 @@ namespace ScoreApp.Migrations
                     b.ToTable("Teams");
                 });
 
-            modelBuilder.Entity("ScoreApp.Database.TeamRound", b =>
-                {
-                    b.Property<long>("RoundId");
-
-                    b.Property<long>("TeamId");
-
-                    b.HasKey("RoundId", "TeamId");
-
-                    b.HasIndex("TeamId");
-
-                    b.ToTable("TeamRound");
-                });
-
             modelBuilder.Entity("ScoreApp.Database.Round", b =>
                 {
                     b.HasOne("ScoreApp.Database.Game", "Game")
@@ -105,21 +95,9 @@ namespace ScoreApp.Migrations
 
             modelBuilder.Entity("ScoreApp.Database.Team", b =>
                 {
-                    b.HasOne("ScoreApp.Database.Game")
+                    b.HasOne("ScoreApp.Database.Game", "Game")
                         .WithMany("Teams")
-                        .HasForeignKey("GameID");
-                });
-
-            modelBuilder.Entity("ScoreApp.Database.TeamRound", b =>
-                {
-                    b.HasOne("ScoreApp.Database.Round", "Round")
-                        .WithMany("Teams")
-                        .HasForeignKey("RoundId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("ScoreApp.Database.Team", "Team")
-                        .WithMany("Rounds")
-                        .HasForeignKey("TeamId")
+                        .HasForeignKey("GameID")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618

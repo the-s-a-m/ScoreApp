@@ -21,9 +21,6 @@ namespace ScoreApp.Database
         public Game Game { get; set; }
 
         [Required]
-        public ICollection<TeamRound> Rounds { get; set; } = new List<TeamRound>();
-
-        [Required]
         public int GamesPlayed { get; set; } = 0;
 
         [Required]

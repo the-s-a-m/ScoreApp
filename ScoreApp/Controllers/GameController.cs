@@ -51,6 +51,30 @@ namespace ScoreApp.Controllers
             return Ok(game);
         }
 
+        // GET: api/Game/5
+        [HttpGet("{id}/all")]
+        public async Task<IActionResult> GetGameAll([FromRoute] long id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (GameDeleted(id))
+            {
+                return BadRequest();
+            }
+
+            var game = await dbContext.Games.Include(e => e.PlayingRounds).Include(e => e.Teams).SingleOrDefaultAsync(m => m.ID == id);
+
+            if (game == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(game);
+        }
+
         // PUT: api/Game/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGame([FromRoute] long id, [FromBody] Game game)
@@ -95,6 +119,7 @@ namespace ScoreApp.Controllers
                 return BadRequest(ModelState);
             }
 
+            game.Created = DateTime.Now;
             dbContext.Games.Add(game);
             await dbContext.SaveChangesAsync();
 
