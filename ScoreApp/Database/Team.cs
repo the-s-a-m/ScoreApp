@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Linq;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ScoreApp.Database
 {
@@ -15,6 +15,10 @@ namespace ScoreApp.Database
         [Required]
         [StringLength(40, MinimumLength = 2)]
         public string Name { get; set; }
+
+        [Required]
+        [JsonIgnore]
+        public Game Game { get; set; }
 
         [Required]
         public ICollection<TeamRound> Rounds { get; set; } = new List<TeamRound>();

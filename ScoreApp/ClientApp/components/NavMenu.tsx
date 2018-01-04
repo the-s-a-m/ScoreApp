@@ -23,21 +23,6 @@ export class NavMenu extends React.Component<{}, {}> {
                             </NavLink>
                         </li>
                         <li>
-                            <NavLink to={'/scoreview'} activeClassName='active'>
-                                <span className='glyphicon glyphicon-th-list'></span> ScoreView(old)
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink to={'/fetchdata'} activeClassName='active'>
-                                <span className='glyphicon glyphicon-th-list'></span> Fetchdata
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink to={'/team'} activeClassName='active'>
-                                <span className='glyphicon glyphicon-th-list'></span> Teams
-                            </NavLink>
-                        </li>
-                        <li>
                             <NavLink to={'/game'} activeClassName='active'>
                                 <span className='glyphicon glyphicon-th-list'></span> Games
                             </NavLink>

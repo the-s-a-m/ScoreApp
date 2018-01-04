@@ -10,7 +10,7 @@ using ScoreApp.Database;
 namespace ScoreApp.Controllers
 {
     [Produces("application/json")]
-    [Route("api/Game")]
+    [Route("api/game")]
     public class GameController : Controller
     {
         private readonly DataDbContext dbContext;

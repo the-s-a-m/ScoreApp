@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
 import 'isomorphic-fetch';
+import { withRouter } from 'react-router-dom'
 
 interface GameEditState {
     games: Game[];
@@ -20,16 +21,10 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameEditS
             .then(data => {
                 this.setState({ games: data, loadingState: this.state.loadingState + 1 });
             });
-
-        fetch('api/Team')
-            .then(response => response.json() as Promise<Team[]>)
-            .then(data => {
-                this.setState({ possibleTeams: data, loadingState: this.state.loadingState + 1 });
-            });
     }
 
     public render() {
-        let contents = this.state.loadingState < 2
+        let contents = this.state.loadingState < 1
             ? <p><em>Loading...</em></p>
             : this.renderForecastsTable(this.state.games);
 
@@ -69,9 +64,8 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameEditS
                                 <span>{t.name}<button>x</button></span>
                             )}
                             <div className="input-group">
-                                <input id="insertTeam" type="text" className="form-control" value={this.state.newTeamName} onChange={this.setNewTeamName.bind(this)} />
                                 <span className="input-group-btn">
-                                    <button className="btn btn-secondary" type="button" onClick={this.addTeam.bind(this, game.id)}>Add</button>
+                                    <button className="btn btn-secondary" type="button" onClick={() => { this.props.history.push('/team/' + game.id) }}>Edit Team</button>
                                 </span>
                             </div>
                         </td>

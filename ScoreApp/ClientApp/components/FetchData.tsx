@@ -7,10 +7,10 @@ const Countries = [
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
 import 'isomorphic-fetch';
-import { WithContext as ReactTags } from 'react-tag-input';
-import './../css/reactTags.css'
+//import { WithContext as ReactTags } from 'react-tag-input';
+//import './../css/reactTags.css'
 
-const Tags = ReactTags;
+//const Tags = ReactTags;
 
 
 interface FetchDataExampleState {
@@ -46,14 +46,16 @@ export class FetchData extends React.Component<RouteComponentProps<{}>, FetchDat
         const { tags, suggestions } = this.state;
         return (
             <div>
-                <Tags
-                    tags={tags}
-                    suggestions={suggestions}
-                    handleDelete={(i) => this.handleDelete(i, "abc")}
-                    handleAddition={this.handleAddition}
-                />
             </div>
         );
+        /*
+            <Tags
+                tags={tags}
+                suggestions={suggestions}
+                handleDelete={(i) => this.handleDelete(i, "abc")}
+                handleAddition={this.handleAddition}
+            />
+        */
     }
     /*
     public render() {

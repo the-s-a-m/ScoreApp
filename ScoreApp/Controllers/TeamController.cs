@@ -10,7 +10,7 @@ using ScoreApp.Database;
 namespace ScoreApp.Controllers
 {
     [Produces("application/json")]
-    [Route("api/Team")]
+    [Route("api/{gameId}/team")]
     public class TeamController : Controller
     {
         private readonly DataDbContext dbContext;
@@ -20,47 +20,55 @@ namespace ScoreApp.Controllers
             dbContext = context;
         }
 
-        // GET: api/Team
+        // GET: api/gameId/team
         [HttpGet]
-        public IEnumerable<Team> GetTeam()
-        {
-            return dbContext.Teams;
-        }
-
-        // GET: api/Team/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetTeam([FromRoute] long id)
+        public async Task<IActionResult> GetTeams([FromRoute] long gameId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+            var teams = await dbContext.Teams.Where(t => t.Game.ID == gameId && t.Deleted == false).ToListAsync();
+            return Ok(teams);
+        }
 
-            if (TeamDeleted(id))
+        // GET: api/gameId/team/teamid
+        [HttpGet("{teamId}")]
+        public async Task<IActionResult> GetTeam([FromRoute] long gameId, [FromRoute] long teamId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            if (TeamDeleted(teamId))
             {
                 return BadRequest();
             }
 
-            var team = await dbContext.Teams.SingleOrDefaultAsync(m => m.Deleted == false && m.ID == id);
-
+            var team = await dbContext.Teams.Where(t => t.Game.ID == gameId && t.Deleted == false && t.ID == teamId).SingleAsync();
             if (team == null)
             {
                 return NotFound();
             }
-
             return Ok(team);
         }
 
-        // PUT: api/Team/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutTeam([FromRoute] long id, [FromBody] Team team)
+        // PUT: api/gameId/team/teamid
+        [HttpPut("{teamId}")]
+        public async Task<IActionResult> PutTeam([FromRoute] long gameId, [FromRoute] long teamId, [FromBody] Team team)
         {
+            team.Game = dbContext.Games.Where(g => g.ID == gameId).FirstOrDefault();
+            if (team.Game == null)
+            {
+                return BadRequest("Game ID Incorrect");
+            }
+            TryValidateModel(team);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (id != team.ID || TeamDeleted(team.ID))
+            if (teamId != team.ID || TeamDeleted(team.ID))
             {
                 return BadRequest();
             }
@@ -73,7 +81,7 @@ namespace ScoreApp.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!TeamExists(id))
+                if (!TeamExists(teamId))
                 {
                     return NotFound();
                 }
@@ -86,19 +94,28 @@ namespace ScoreApp.Controllers
             return NoContent();
         }
 
-        // POST: api/Team
+        // POST: api/gameId/team
         [HttpPost]
-        public async Task<IActionResult> PostTeam([FromBody] Team team)
+        public async Task<IActionResult> PostTeam([FromRoute] long gameId, [FromBody] Team team)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            ModelState.Clear();
 
             team.ID = 0;
             team.GamesPlayed = 0;
             team.GamesWon = 0;
             team.Deleted = false;
+
+            team.Game = dbContext.Games.Where(g => g.ID == gameId).FirstOrDefault();
+            if (team.Game == null)
+            {
+                return BadRequest("Game ID Incorrect");
+            }
+            TryValidateModel(team);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
             var resp = dbContext.Teams.Add(team);
             await dbContext.SaveChangesAsync();
@@ -106,21 +123,21 @@ namespace ScoreApp.Controllers
             return CreatedAtAction("GetTeam", new { id = resp.Entity.ID }, team);
         }
 
-        // DELETE: api/Team/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTeam([FromRoute] long id)
+        // DELETE: api/gameId/team/teamid
+        [HttpDelete("{teamId}")]
+        public async Task<IActionResult> DeleteTeam([FromRoute] long gameId, [FromRoute] long teamId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (TeamDeleted(id))
+            if (TeamDeleted(teamId))
             {
                 return BadRequest();
             }
 
-            var team = await dbContext.Teams.SingleOrDefaultAsync(m => m.Deleted == false && m.ID == id);
+            var team = await dbContext.Teams.SingleOrDefaultAsync(m => m.Deleted == false && m.Game.ID == gameId && m.ID == teamId);
             if (team == null)
             {
                 return NotFound();
@@ -135,7 +152,7 @@ namespace ScoreApp.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!TeamExists(id))
+                if (!TeamExists(teamId))
                 {
                     return NotFound();
                 }

@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
+import { withRouter } from 'react-router';
 import 'isomorphic-fetch';
 
 interface TeamEditState {
+    gameId: string;
     teams: Team[];
     loading: boolean;
     newTeam: string;
@@ -10,11 +12,13 @@ interface TeamEditState {
 
 
 export class TeamView extends React.Component<RouteComponentProps<{}>, TeamEditState> {
-    constructor() {
-        super();
-        this.state = { teams: [], loading: true, newTeam: '' };
+    constructor(props: any) {
+        super(props);
+        var pathGameId = this.props.location.pathname.substr(6);
+        console.log(pathGameId);
+        this.state = { gameId: pathGameId, teams: [], loading: true, newTeam: '' };
 
-        fetch('api/Team')
+        fetch('api/' + this.state.gameId + '/team')
             .then(response => response.json() as Promise<Team[]>)
             .then(data => {
                 this.setState({ teams: data, loading: false });
@@ -68,13 +72,13 @@ export class TeamView extends React.Component<RouteComponentProps<{}>, TeamEditS
 
     addTeam() {
         var team: Team = {
-            id: -1,
+            id: 0,
             name: this.state.newTeam,
             gamesPlayed: 0,
             gamesWon: 0,
             deleted: false
         };
-        fetch('api/Team', {
+        fetch('api/' + this.state.gameId + '/team', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
