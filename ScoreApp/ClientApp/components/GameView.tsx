@@ -10,6 +10,7 @@ interface GameState {
     loading: boolean;
     startAllowed: boolean;
     roundInputCount: number[];
+    shuffledRoundIndex: number[];
 }
 
 var tempGame: Game = {
@@ -28,30 +29,41 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     constructor(props: any) {
         super(props);
         var pathGameId = this.props.location.pathname.substr(6);
-        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, scoreInput: 0, startAllowed: false, roundInputCount: [] };
+        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, scoreInput: 0, startAllowed: false, roundInputCount: [], shuffledRoundIndex: [] };
 
         fetch('api/game/' + this.state.gameId + '/all')
             .then(response => response.json() as Promise<Game>)
             .then(data => {
                 var roundCount = this.state.roundInputCount;
-                data.playingRounds.forEach((round) => {
+                var updatedShuffeledRoundIndex = this.state.shuffledRoundIndex;
+                data.playingRounds.forEach((round, index) => {
                     roundCount[round.id] = 0;
+                    updatedShuffeledRoundIndex[index] = index;
                 });
-                this.setState({ gameData: data, loading: false, roundInputCount: roundCount});
+                updatedShuffeledRoundIndex = this.shuffleArray(updatedShuffeledRoundIndex);
+                this.setState({ gameData: data, loading: false, roundInputCount: roundCount, shuffledRoundIndex: updatedShuffeledRoundIndex});
             });
     }
 
     public render() {
-        let contents = this.state.loading
+        let mainContent = this.state.loading
             ? <p><em>Loading...</em></p>
             : this.showPlayingRounds(this.state.gameData.playingRounds);
 
         return <div>
             <h1>{this.state.gameData.name}</h1>
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
-            {contents}
+            {mainContent}
             {this.renderTeamsTable(this.state.gameData.teams)}
         </div>;
+    }
+
+    private shuffleArray(array: any[]): any[] {
+        for (let i = array.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
     }
 
     private showPlayingRounds(rounds: Round[]) {
@@ -68,32 +80,11 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
 
         return <div>
             <p>Rounds: {rounds.length}</p>
-            {rounds.map((round, index) => this.renderScoreInput(round, index))}
+            {this.state.shuffledRoundIndex.map(shuffleIndex => rounds[shuffleIndex]).map(round => this.renderScoreInput(round))}
         </div>;
     }
 
-    private renderTeamsTable(teams: Team[]) {
-        return <table className='table'>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Games Played</th>
-                    <th>Games Won</th>
-                </tr>
-            </thead>
-            <tbody>
-                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
-                    <tr key={team.id}>
-                        <td>{team.name}</td>
-                        <td>{team.gamesPlayed}</td>
-                        <td>{team.gamesWon}</td>
-                    </tr>
-                )}
-            </tbody>
-        </table>;
-    }
-
-    private renderScoreInput(round: Round, roundIndex: number) {
+    private renderScoreInput(round: Round) {
         const playingTeamsIDs = Object.keys(round.roundScores);
         var winningTeamId = 0;
         var winningTeamVal = -1;
@@ -123,6 +114,27 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                     <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
                 </span>
             </div>;
+    }
+
+        private renderTeamsTable(teams: Team[]) {
+        return <table className='table'>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Games Played</th>
+                    <th>Games Won</th>
+                </tr>
+            </thead>
+            <tbody>
+                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
+                    <tr key={team.id}>
+                        <td>{team.name}</td>
+                        <td>{team.gamesPlayed}</td>
+                        <td>{team.gamesWon}</td>
+                    </tr>
+                )}
+            </tbody>
+        </table>;
     }
 
     updateWinnerData(round: Round) {
@@ -201,7 +213,14 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             console.log(JSON.stringify(response));
             var gameDataUpdated = this.state.gameData;
             gameDataUpdated.playingRounds = response;
-            this.setState({ gameData: gameDataUpdated });
+
+            var updatedShuffledRoundIndex = this.state.shuffledRoundIndex;
+            gameDataUpdated.playingRounds.forEach((round, index) => {
+                updatedShuffledRoundIndex[index] = index;
+            });
+            updatedShuffledRoundIndex = this.shuffleArray(updatedShuffledRoundIndex);
+
+            this.setState({ gameData: gameDataUpdated, shuffledRoundIndex: updatedShuffledRoundIndex });
         });
     }
 
