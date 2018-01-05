@@ -62,6 +62,7 @@ namespace ScoreApp.Controllers
             {
                 return BadRequest("Game ID Incorrect");
             }
+            ModelState.Clear();
             TryValidateModel(team);
             if (!ModelState.IsValid)
             {
@@ -110,6 +111,7 @@ namespace ScoreApp.Controllers
             {
                 return BadRequest("Game ID Incorrect");
             }
+            ModelState.Clear();
             TryValidateModel(team);
 
             if (!ModelState.IsValid)

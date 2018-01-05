@@ -37,7 +37,7 @@ export class GameEditView extends React.Component<RouteComponentProps<{}>, GameE
                     <div className="col-sm-6">
                         <input type="text" className="form-control" value={this.state.newGame} onChange={this.handleChange.bind(this)}></input>
                     </div>
-                    <button type="button" className="btn btn-primary col-sm-2" onClick={() => { this.addGame() }}>Add Team</button>
+                    <button type="button" className="btn btn-primary col-sm-2" onClick={() => { this.addGame() }}>Add Game</button>
                 </div>
             </form>
         </div>;

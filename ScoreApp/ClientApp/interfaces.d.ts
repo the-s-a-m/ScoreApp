@@ -12,7 +12,9 @@ interface Team {
 
 interface Round {
     id: number;
-    roundScores: Dictionary<number>; 
+    roundScores: Dictionary<number>;
+    roundScoresJSON: string;
+    played: boolean;
     deleted: boolean;
 }
 

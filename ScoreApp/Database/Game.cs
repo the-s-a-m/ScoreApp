@@ -21,10 +21,10 @@ namespace ScoreApp.Database
         public string Name { get; set; }
 
         [Required]
-        public ICollection<Team> Teams { get; set; } = new List<Team>();
+        public List<Team> Teams { get; set; } = new List<Team>();
 
         [Required]
-        public ICollection<Round> PlayingRounds { get; set; } = new List<Round>();
+        public List<Round> PlayingRounds { get; set; } = new List<Round>();
 
         [Required]
         public bool Deleted { get; set; } = false;

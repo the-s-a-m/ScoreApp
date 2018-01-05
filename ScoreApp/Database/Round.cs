@@ -23,7 +23,6 @@ namespace ScoreApp.Database
         /// Use RoundScores to edit
         /// </summary>
         [Required]
-        [JsonIgnore]
         public string RoundScoresJSON { get; set; } = "{}";
 
         /// <summary>
@@ -42,6 +41,9 @@ namespace ScoreApp.Database
                 RoundScoresJSON = JsonConvert.SerializeObject(value);
             }
         }
+
+        [Required]
+        public bool Played { get; set; } = false;
 
         [Required]
         public bool Deleted { get; set; } = false;

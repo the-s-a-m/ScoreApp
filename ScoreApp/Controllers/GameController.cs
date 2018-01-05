@@ -27,7 +27,7 @@ namespace ScoreApp.Controllers
             return dbContext.Games;
         }
 
-        // GET: api/Game/5
+        // GET: api/game/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetGame([FromRoute] long id)
         {
@@ -51,7 +51,7 @@ namespace ScoreApp.Controllers
             return Ok(game);
         }
 
-        // GET: api/Game/5
+        // GET: api/game/5
         [HttpGet("{id}/all")]
         public async Task<IActionResult> GetGameAll([FromRoute] long id)
         {
@@ -75,7 +75,7 @@ namespace ScoreApp.Controllers
             return Ok(game);
         }
 
-        // PUT: api/Game/5
+        // PUT: api/game/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutGame([FromRoute] long id, [FromBody] Game game)
         {
@@ -110,7 +110,7 @@ namespace ScoreApp.Controllers
             return NoContent();
         }
 
-        // POST: api/Game
+        // POST: api/game
         [HttpPost]
         public async Task<IActionResult> PostGame([FromBody] Game game)
         {
@@ -126,7 +126,7 @@ namespace ScoreApp.Controllers
             return CreatedAtAction("GetGame", new { id = game.ID }, game);
         }
 
-        // DELETE: api/Game/5
+        // DELETE: api/game/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGame([FromRoute] long id)
         {

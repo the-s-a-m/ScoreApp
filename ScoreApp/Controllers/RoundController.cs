@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ScoreApp.Database
 {
     [Produces("application/json")]
-    [Route("api/Round")]
+    [Route("api/{gameId}/round")]
     public class RoundController : Controller
     {
         private readonly DataDbContext dbContext;
@@ -19,27 +19,32 @@ namespace ScoreApp.Database
             dbContext = context;
         }
 
-        // GET: api/Round
+        // GET: api/{gameId}/round
         [HttpGet]
-        public IEnumerable<Round> GetRound()
-        {
-            return dbContext.Rounds;
-        }
-
-        // GET: api/Round/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetRound([FromRoute] long id)
+        public async Task<IActionResult> GetRounds([FromRoute] long gameId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if (RoundDeleted(id))
+            var rounds = await dbContext.Rounds.Where(r => r.Game.ID == gameId).ToListAsync();
+            return Ok(rounds);
+        }
+
+        // GET: api/{gameId}/round/{roundId}
+        [HttpGet("{roundId}")]
+        public async Task<IActionResult> GetRound([FromRoute] long gameId, [FromRoute] long roundId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            if (RoundDeleted(roundId))
             {
                 return BadRequest();
             }
 
-            var round = await dbContext.Rounds.SingleOrDefaultAsync(m => m.Deleted == false && m.ID == id);
+            var round = await dbContext.Rounds.SingleOrDefaultAsync(m => m.Deleted == false && m.Game.ID == gameId && m.ID == roundId);
 
             if (round == null)
             {
@@ -49,16 +54,23 @@ namespace ScoreApp.Database
             return Ok(round);
         }
 
-        // PUT: api/Round/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRound([FromRoute] long id, [FromBody] Round round)
+        // PUT: api/{gameId}/round/{roundId}
+        [HttpPut("{roundId}")]
+        public async Task<IActionResult> PutRound([FromRoute] long gameId, [FromRoute] long roundId, [FromBody] Round round)
         {
+            round.Game = dbContext.Games.Where(g => g.ID == gameId).FirstOrDefault();
+            if (round.Game == null)
+            {
+                return BadRequest("Game ID Incorrect");
+            }
+            ModelState.Clear();
+            TryValidateModel(round);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (id != round.ID || RoundDeleted(round.ID))
+            if (roundId != round.ID || RoundDeleted(round.ID))
             {
                 return BadRequest();
             }
@@ -71,7 +83,7 @@ namespace ScoreApp.Database
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!RoundExists(id))
+                if (!RoundExists(roundId))
                 {
                     return NotFound();
                 }
@@ -84,38 +96,53 @@ namespace ScoreApp.Database
             return NoContent();
         }
 
-        // POST: api/Round
+        // POST: api/{gameId}/round
         [HttpPost]
-        public async Task<IActionResult> PostRound([FromBody] Round round)
+        public async Task<IActionResult> PostRounds([FromRoute] long gameId, [FromBody] List<Round> rounds)
         {
+            foreach(var round in rounds)
+            {
+                round.Game = dbContext.Games.Where(g => g.ID == gameId).FirstOrDefault();
+                if (round.Game == null)
+                {
+                    return BadRequest("Game ID Incorrect");
+                }
+            }
+            ModelState.Clear();
+            TryValidateModel(rounds);
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            dbContext.Rounds.Add(round);
+            dbContext.Rounds.AddRange(rounds);
             await dbContext.SaveChangesAsync();
 
-            return CreatedAtAction("GetRound", new { id = round.ID }, round);
+            return CreatedAtAction("PostRounds", rounds);
         }
 
-        // DELETE: api/Round/5
+        // DELETE: api/{gameId}/round/{roundId}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRound([FromRoute] long id)
+        public async Task<IActionResult> DeleteRound([FromRoute] long gameId, [FromRoute] long roundId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            if (RoundDeleted(id))
+            if (RoundDeleted(roundId))
             {
                 return BadRequest();
             }
 
-            var round = await dbContext.Rounds.SingleOrDefaultAsync(m => m.ID == id);
+            var round = await dbContext.Rounds.SingleOrDefaultAsync(m => m.ID == roundId && m.Game.ID == gameId);
             if (round == null)
             {
                 return NotFound();
+            }
+            if(round.Deleted)
+            {
+                //Return GONE Statuscode
+                return StatusCode(410);
             }
 
             round.Deleted = true;
@@ -127,7 +154,7 @@ namespace ScoreApp.Database
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!RoundExists(id))
+                if (!RoundExists(roundId))
                 {
                     return NotFound();
                 }
