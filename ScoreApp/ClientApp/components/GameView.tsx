@@ -50,6 +50,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             <h1>{this.state.gameData.name}</h1>
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
             {contents}
+            {this.renderTeamsTable(this.state.gameData.teams)}
         </div>;
     }
 
@@ -67,10 +68,29 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
 
         return <div>
             <p>Rounds: {rounds.length}</p>
-            <form>
-                {rounds.map((round, index) => this.renderScoreInput(round, index))}
-            </form>
+            {rounds.map((round, index) => this.renderScoreInput(round, index))}
         </div>;
+    }
+
+    private renderTeamsTable(teams: Team[]) {
+        return <table className='table'>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Games Played</th>
+                    <th>Games Won</th>
+                </tr>
+            </thead>
+            <tbody>
+                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
+                    <tr key={team.id}>
+                        <td>{team.name}</td>
+                        <td>{team.gamesPlayed}</td>
+                        <td>{team.gamesWon}</td>
+                    </tr>
+                )}
+            </tbody>
+        </table>;
     }
 
     private renderScoreInput(round: Round, roundIndex: number) {
@@ -86,7 +106,6 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             }
             if (round.roundScores[teamId] == winningTeamVal) {
                 sameScoreCount++;
-                console.log(sameScoreCount);
             }
         });
         const buttonText = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
@@ -101,26 +120,50 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                     </div>
                 )}
                 <span className="input-group-btn">
-                    <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.setScore(round.id) }}>{buttonText}</button>
+                    <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
                 </span>
             </div>;
     }
 
+    updateWinnerData(round: Round) {
+        if (round.deleted || round.played) {
+            return;
+        }
+        const playingTeamsIDs = Object.keys(round.roundScores);
+        var winningTeamId = -1;
+        var winningTeamVal = -1;
+        var sameScoreCount = -1;
+        var sameScoreTeamId = -1;
+
+        playingTeamsIDs.forEach((teamId, index) => {
+            if (round.roundScores[teamId] > winningTeamVal) {
+                winningTeamId = parseInt(teamId);
+                winningTeamVal = round.roundScores[teamId];
+                sameScoreCount = -1;
+            }
+            if (round.roundScores[teamId] == winningTeamVal) {
+                sameScoreCount++;
+                sameScoreTeamId = parseInt(teamId);
+            }
+        });
+
+        playingTeamsIDs.forEach((teamId, index) => {
+            this.updateTeam(parseInt(teamId), (parseInt(teamId) == winningTeamId) || (parseInt(teamId) == sameScoreTeamId));
+        });
+    }
+
     handleChange(event: any, roundId: number, teamId: number) {
-        console.log(event.target.value);
         var score = parseInt(event.target.value);
         var roundCount = this.state.roundInputCount;
         roundCount[roundId]++;
         var gameInfo = this.state.gameData;
         gameInfo.playingRounds.forEach(round => {
             if (round.id == roundId) {
-                console.log("set roundId " + round.id + " teamId " + teamId + " to " + score);
                 round.roundScores[teamId] = score;
                 round.roundScoresJSON = JSON.stringify(round.roundScores);
             }
         });
         this.setState({ gameData: gameInfo, roundInputCount: roundCount });
-        console.log(JSON.stringify(this.state.gameData.playingRounds));
     }
 
     handelCheckbox() {
@@ -172,11 +215,12 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         return teamName;
     }
 
-    setScore(roundId: number) {
+    updateScore(roundId: number) {
         this.state.gameData.playingRounds.forEach((round, index) => {
             if (round.id == roundId) {
+                this.updateWinnerData(round);
+
                 round.played = true;
-                console.log(JSON.stringify(round))
                 fetch('api/' + this.state.gameId + '/round/' + roundId, {
                     method: 'PUT',
                     headers: {
@@ -188,6 +232,27 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                     console.log(JSON.stringify(response));
                     var updatedGameData = this.state.gameData;
                     updatedGameData.playingRounds[index].played = true;
+                    this.setState({ gameData: updatedGameData });
+                });
+            }
+        });
+    }
+
+    updateTeam(teamId: number, gameWon: boolean) {
+        this.state.gameData.teams.forEach((team, index) => {
+            if (team.id == teamId) {
+                team.gamesPlayed++;
+                team.gamesWon = gameWon ? team.gamesWon + 1 : team.gamesWon;
+                fetch('api/' + this.state.gameId + '/team/' + teamId, {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(team),
+                }).then((response) => {
+                    console.log(JSON.stringify(response));
+                    var updatedGameData = this.state.gameData;
                     this.setState({ gameData: updatedGameData });
                 });
             }

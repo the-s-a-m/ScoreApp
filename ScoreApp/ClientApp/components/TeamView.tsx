@@ -28,7 +28,7 @@ export class TeamView extends React.Component<RouteComponentProps<{}>, TeamEditS
     public render() {
         let contents = this.state.loading
             ? <p><em>Loading...</em></p>
-            : this.renderForecastsTable(this.state.teams);
+            : this.renderTeamsTable(this.state.teams);
 
         return <div>
             <h1>Teams</h1>
@@ -45,7 +45,7 @@ export class TeamView extends React.Component<RouteComponentProps<{}>, TeamEditS
         </div>;
     }
 
-    private renderForecastsTable(teams: Team[]) {
+    private renderTeamsTable(teams: Team[]) {
         return <table className='table'>
             <thead>
                 <tr>
