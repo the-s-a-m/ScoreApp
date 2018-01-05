@@ -74,18 +74,34 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     }
 
     private renderScoreInput(round: Round, roundIndex: number) {
-        var playingTeamsIDs = Object.keys(round.roundScores);
+        const playingTeamsIDs = Object.keys(round.roundScores);
+        var winningTeamId = 0;
+        var winningTeamVal = -1;
+        var sameScoreCount = -1;
+        playingTeamsIDs.forEach((teamId, index) => {
+            if (round.roundScores[teamId] > winningTeamVal) {
+                winningTeamId = parseInt(teamId);
+                winningTeamVal = round.roundScores[teamId];
+                sameScoreCount = -1;
+            }
+            if (round.roundScores[teamId] == winningTeamVal) {
+                sameScoreCount++;
+                console.log(sameScoreCount);
+            }
+        });
+        const buttonText = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
+        const buttonType = round.deleted ? 'btn-default' : round.played ? sameScoreCount > 0 ? 'btn-info' : 'btn-success' : 'btn-primary';
         return <div className="row" key={round.id}>
                 {playingTeamsIDs.map((teamId, index) => 
                     <div key={round.id + '_' + teamId + '_' + index} className="col-sm-4">
                         <div className="input-group" >
                             <span className="input-group-addon">{this.getTeamName(parseInt(teamId))} </span>
-                            <input type="number" min="0" step="1" className="form-control" value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
+                            <input type="number" min="0" step="1" className="form-control" disabled={round.deleted || round.played} value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
                         </div>
                     </div>
                 )}
                 <span className="input-group-btn">
-                <button type="button" className="btn btn-primary" disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.setScore(round.id) }}>Set scores</button>
+                    <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.setScore(round.id) }}>{buttonText}</button>
                 </span>
             </div>;
     }
@@ -138,10 +154,10 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             body: JSON.stringify(generatedRounds),
         }).then(response => {
             return response.json();
-        }).then((response) => {
+        }).then((response: Round[]) => {
             console.log(JSON.stringify(response));
             var gameDataUpdated = this.state.gameData;
-            gameDataUpdated.playingRounds.push(response);
+            gameDataUpdated.playingRounds = response;
             this.setState({ gameData: gameDataUpdated });
         });
     }
@@ -159,6 +175,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     setScore(roundId: number) {
         this.state.gameData.playingRounds.forEach((round, index) => {
             if (round.id == roundId) {
+                round.played = true;
                 console.log(JSON.stringify(round))
                 fetch('api/' + this.state.gameId + '/round/' + roundId, {
                     method: 'PUT',
