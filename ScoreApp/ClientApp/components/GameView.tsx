@@ -30,7 +30,16 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     constructor(props: any) {
         super(props);
         var pathGameId = this.props.location.pathname.substr(6);
-        this.state = { gameId: pathGameId, gameData: tempGame, generatedRounds: [], loading: true, teamVsCountInput: 2, startAllowed: false, roundInputCount: [], webSocket: new WebSocket('ws://' + location.host + '/ws') };
+        this.state = {
+            gameId: pathGameId,
+            gameData: tempGame,
+            generatedRounds: [],
+            loading: true,
+            teamVsCountInput: 2,
+            startAllowed: false,
+            roundInputCount: [],
+            webSocket: new WebSocket('ws://' + location.host + '/ws')
+        };
 
         this.updateLocalGameData();
 
@@ -44,6 +53,22 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             console.log('Message from server ', event.data);
             this.updateLocalGameData();
         });
+
+        //Bind functionkey press
+        this.escFunction = this.escFunction.bind(this);
+    }
+
+    escFunction(event: any) {
+        if (event.keyCode === 122) {
+            console.log("change to presentation mode");
+            this.props.history.push('/gameviewer/' + this.state.gameId);
+        }
+    }
+    componentDidMount() {
+        document.addEventListener("keydown", this.escFunction, false);
+    }
+    componentWillUnmount() {
+        document.removeEventListener("keydown", this.escFunction, false);
     }
 
     public render() {

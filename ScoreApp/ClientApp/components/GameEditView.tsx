@@ -12,8 +12,8 @@ interface GameEditState {
 }
 
 export class GameEditView extends React.Component<RouteComponentProps<{}>, GameEditState> {
-    constructor() {
-        super();
+    constructor(params: any) {
+        super(params);
         this.state = { games: [], loadingState: 0, newGame: '', possibleTeams: [], newTeamName: '' };
 
         fetch('api/game')
