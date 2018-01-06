@@ -93,6 +93,19 @@ namespace ScoreApp.Database
                 }
             }
 
+            //Close game if all rounds are completed
+            if (dbContext.Rounds.Where(r => r.Game.ID == gameId && r.Deleted == false && r.Played == true).Count()
+                == dbContext.Rounds.Where(r => r.Game.ID == gameId && r.Deleted == false).Count())
+            {
+                var game = dbContext.Games.Where(g => g.ID == gameId && g.Deleted == false).FirstOrDefault();
+                if (game != null)
+                {
+                    game.Ended = DateTime.Now;
+                    dbContext.Entry(game).State = EntityState.Modified;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+
             Startup.SendMessage("Updated");
 
             return NoContent();

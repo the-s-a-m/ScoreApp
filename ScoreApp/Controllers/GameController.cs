@@ -110,6 +110,47 @@ namespace ScoreApp.Controllers
             return NoContent();
         }
 
+        // PUT: api/game/5
+        [HttpPut("{gameId}/start")]
+        public async Task<IActionResult> PutStartGame([FromRoute] long gameId)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (GameDeleted(gameId) || !GameExists(gameId))
+            {
+                return BadRequest();
+            }
+
+            var game = await dbContext.Games.Where(g => g.ID == gameId).FirstOrDefaultAsync();
+            if(game == null)
+            {
+                return BadRequest();
+            }
+            game.Started = DateTime.Now;
+            dbContext.Entry(game).State = EntityState.Modified;
+
+            try
+            {
+                await dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!GameExists(gameId))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return Ok(new { Started = game.Started });
+        }
+
         // POST: api/game
         [HttpPost]
         public async Task<IActionResult> PostGame([FromBody] Game game)

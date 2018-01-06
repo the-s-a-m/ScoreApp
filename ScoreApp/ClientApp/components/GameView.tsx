@@ -6,11 +6,11 @@ import 'isomorphic-fetch';
 interface GameState {
     gameId: string;
     gameData: Game;
+    generatedRounds: Round[];
     teamVsCountInput: number;
     loading: boolean;
     startAllowed: boolean;
     roundInputCount: number[];
-    shuffledRoundIndex: number[];
     webSocket: WebSocket;
 }
 
@@ -30,7 +30,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     constructor(props: any) {
         super(props);
         var pathGameId = this.props.location.pathname.substr(6);
-        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, teamVsCountInput: 2, startAllowed: false, roundInputCount: [], shuffledRoundIndex: [], webSocket: new WebSocket('ws://' + location.host + '/ws') };
+        this.state = { gameId: pathGameId, gameData: tempGame, generatedRounds: [], loading: true, teamVsCountInput: 2, startAllowed: false, roundInputCount: [], webSocket: new WebSocket('ws://' + location.host + '/ws') };
 
         this.updateLocalGameData();
 
@@ -49,13 +49,15 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     public render() {
         let mainContent = this.state.loading
             ? <p><em>Loading...</em></p>
-            : this.showPlayingRounds(this.state.gameData.playingRounds);
+            : <div>
+                {this.gameStarted(this.state.gameData.started) ? this.showPlayingRounds(this.state.gameData.playingRounds, false) : this.showPlayingRounds(this.state.generatedRounds, true)}
+                {this.renderTeamsTable(this.state.gameData.teams)}
+              </div>
 
         return <div>
             <h1>{this.state.gameData.name}</h1>
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
             {mainContent}
-            {this.renderTeamsTable(this.state.gameData.teams)}
         </div>;
     }
 
@@ -67,10 +69,9 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         return array;
     }
 
-    private showPlayingRounds(rounds: Round[]) {
+    private showPlayingRounds(rounds: Round[], disabledInput: boolean) {
         if (rounds.length == 0) {
-            return <form>
-                <div className="row">
+            return <div className="row">
                     <div className="form-group">
                         <input className="form-check-input" type="checkbox" id="inlineCheckbox1" onClick={() => { this.handelCheckbox() }} /> Teams correct (can not be changed later)
                     </div>
@@ -78,16 +79,26 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                         <button type="button" className="btn btn-block btn-primary" disabled={!this.state.startAllowed} onClick={() => { this.generatePlayingRounds() }}>Generated playing rounds</button>
                     </div>
                 </div>
-            </form>
         }
 
+        const gameNotStartedContent = this.gameStarted(this.state.gameData.started) ? <div></div> :
+            <div className="row">
+                <div className="form-group">
+                    <button type="button" className="btn btn-block btn-primary" onClick={() => { this.setState({ generatedRounds: this.shuffleArray(this.state.generatedRounds)})}}>Shuffle rounds</button>
+                </div>
+                <div className="form-group">
+                    <button type="button" className="btn btn-block btn-success" onClick={() => { this.startGame() }}>Start Game</button>
+                </div>
+            </div>
+
         return <div>
+            {gameNotStartedContent}
             <p>Rounds: {rounds.length}</p>
-            {this.state.shuffledRoundIndex.map(shuffleIndex => rounds[shuffleIndex]).map(round => this.renderScoreInput(round))}
+            {rounds.map((round, index) => this.renderScoreInput(round, index, disabledInput))}
         </div>;
     }
 
-    private renderScoreInput(round: Round) {
+    private renderScoreInput(round: Round, roundIndex: number, disabledInput: boolean) {
         const playingTeamsIDs = Object.keys(round.roundScores);
         var winningTeamId = 0;
         var winningTeamVal = -1;
@@ -104,22 +115,22 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         });
         const buttonText = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
         const buttonType = round.deleted ? 'btn-default' : round.played ? sameScoreCount > 0 ? 'btn-info' : 'btn-success' : 'btn-primary';
-        return <div className="row" key={round.id}>
+        return <div className="row" key={round.id + '_' + roundIndex}>
                 {playingTeamsIDs.map((teamId, index) => 
                     <div key={round.id + '_' + teamId + '_' + index} className="col-sm-4">
                         <div className="input-group" >
                             <span className="input-group-addon">{this.getTeamName(parseInt(teamId))} </span>
-                            <input type="number" min="0" step="1" className="form-control" disabled={round.deleted || round.played} value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
+                            <input type="number" min="0" step="1" className="form-control" disabled={disabledInput || round.deleted || round.played} value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
                         </div>
                     </div>
                 )}
                 <span className="input-group-btn">
-                    <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
+                    <button type="button" className={'btn ' + buttonType} disabled={disabledInput || round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
                 </span>
             </div>;
     }
 
-        private renderTeamsTable(teams: Team[]) {
+    private renderTeamsTable(teams: Team[]) {
         return <table className='table'>
             <thead>
                 <tr>
@@ -138,6 +149,10 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                 )}
             </tbody>
         </table>;
+    }
+
+    gameStarted(startTime: string | undefined): boolean {
+        return startTime != '' && startTime != '0001-01-01T00:00:00' && startTime != undefined
     }
 
     updateWinnerData(round: Round) {
@@ -190,13 +205,10 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             .then(response => response.json() as Promise<Game>)
             .then(data => {
                 var roundCount = this.state.roundInputCount;
-                var updatedShuffeledRoundIndex = this.state.shuffledRoundIndex;
                 data.playingRounds.forEach((round, index) => {
                     roundCount[round.id] = 0;
-                    updatedShuffeledRoundIndex[index] = index;
                 });
-                updatedShuffeledRoundIndex = this.shuffleArray(updatedShuffeledRoundIndex);
-                this.setState({ gameData: data, loading: false, roundInputCount: roundCount, shuffledRoundIndex: updatedShuffeledRoundIndex });
+                this.setState({ gameData: data, loading: false, roundInputCount: roundCount });
             });
     }
 
@@ -213,14 +225,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             console.log(JSON.stringify(response));
             var gameDataUpdated = this.state.gameData;
             gameDataUpdated.playingRounds = response;
-
-            var updatedShuffledRoundIndex = this.state.shuffledRoundIndex;
-            gameDataUpdated.playingRounds.forEach((round, index) => {
-                updatedShuffledRoundIndex[index] = index;
-            });
-            updatedShuffledRoundIndex = this.shuffleArray(updatedShuffledRoundIndex);
-
-            this.setState({ gameData: gameDataUpdated, shuffledRoundIndex: updatedShuffledRoundIndex });
+            this.setState({ gameData: gameDataUpdated });
         });
     }
 
@@ -242,28 +247,8 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                 generatedRounds.push(round);
             }
         }
-        fetch('api/' + this.state.gameId + '/round', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(generatedRounds),
-        }).then(response => {
-            return response.json();
-        }).then((response: Round[]) => {
-            console.log(JSON.stringify(response));
-            var gameDataUpdated = this.state.gameData;
-            gameDataUpdated.playingRounds = response;
-
-            var updatedShuffledRoundIndex = this.state.shuffledRoundIndex;
-            gameDataUpdated.playingRounds.forEach((round, index) => {
-                updatedShuffledRoundIndex[index] = index;
-            });
-            updatedShuffledRoundIndex = this.shuffleArray(updatedShuffledRoundIndex);
-
-            this.setState({ gameData: gameDataUpdated, shuffledRoundIndex: updatedShuffledRoundIndex });
-        });
+        generatedRounds = this.shuffleArray(generatedRounds);
+        this.setState({ generatedRounds: generatedRounds });
     }
 
     getTeamName(teamId: number): string {
@@ -274,6 +259,50 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             }
         });
         return teamName;
+    }
+
+    startGame() {
+        var gameStarted = this.state.gameData.started;
+        if (gameStarted != '' && gameStarted != '0001-01-01T00:00:00' && gameStarted != undefined) {
+            return;
+        }
+        this.insertRounds(this.state.generatedRounds);
+        this.updateGameStarted();
+    }
+
+    insertRounds(rounds: Round[]) {
+        fetch('api/' + this.state.gameId + '/round', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(rounds),
+        }).then(response => {
+            return response.json();
+        }).then((response: Round[]) => {
+            console.log(JSON.stringify(response));
+            var gameDataUpdated = this.state.gameData;
+            gameDataUpdated.playingRounds = response;
+            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
+        });
+    }
+
+    updateGameStarted() {
+        fetch('api/game/' + this.state.gameId + '/start', {
+            method: 'PUT',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        }).then(response => {
+            return response.json();
+        }).then((response) => {
+            console.log(JSON.stringify(response));
+            var gameDataUpdated = this.state.gameData;
+            gameDataUpdated.started = response.started
+            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
+        });
     }
 
     updateScore(roundId: number) {

@@ -26,7 +26,7 @@ export class GameEditView extends React.Component<RouteComponentProps<{}>, GameE
     public render() {
         let contents = this.state.loadingState < 1
             ? <p><em>Loading...</em></p>
-            : this.renderForecastsTable(this.state.games);
+            : this.renderGameTable(this.state.games);
 
         return <div>
             <h1>Edit Games</h1>
@@ -43,7 +43,7 @@ export class GameEditView extends React.Component<RouteComponentProps<{}>, GameE
         </div>;
     }
 
-    private renderForecastsTable(games: Game[]) {
+    private renderGameTable(games: Game[]) {
         return <table className='table'>
             <thead>
                 <tr>
@@ -67,7 +67,7 @@ export class GameEditView extends React.Component<RouteComponentProps<{}>, GameE
                             </div>
                         </td>
                         <td>{this.renderGameStart(game.id, game.started)}</td>
-                        <td>{this.renderGameEnd(game.ended)}</td>
+                        <td>{this.renderGameEnd(game.id, game.ended)}</td>
                 </tr>
             )}
             </tbody>
@@ -76,18 +76,18 @@ export class GameEditView extends React.Component<RouteComponentProps<{}>, GameE
 
     private renderGameStart(gameId: number, gameStarted: string | undefined) {
         if (gameStarted == '0001-01-01T00:00:00' || gameStarted == undefined) {
-            return <div className="input-group">
-                        <span className="input-group-btn">
-                            <button className="btn btn-secondary" type="button" onClick={() => { this.startGame(gameId) }}>Play Game</button>
-                        </span>
-                    </div>;
+            return <div></div>;
         }
         return <span>{this.niceDate(gameStarted)}</span>
     }
 
-    private renderGameEnd(gameEnded: string | undefined) {
+    private renderGameEnd(gameId: number, gameEnded: string | undefined) {
         if (gameEnded == '0001-01-01T00:00:00' || gameEnded == undefined) {
-            return <span></span>
+            return <div className="input-group">
+                <span className="input-group-btn">
+                    <button className="btn btn-secondary" type="button" onClick={() => { this.startGame(gameId) }}>Play Game</button>
+                </span>
+            </div>;
         }
         return <span>{this.niceDate(gameEnded)}</span>
     }
