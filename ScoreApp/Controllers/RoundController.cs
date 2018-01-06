@@ -93,8 +93,6 @@ namespace ScoreApp.Database
                 }
             }
 
-            Startup.SendMessage("Updated");
-
             return NoContent();
         }
 
