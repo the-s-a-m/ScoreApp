@@ -6,11 +6,12 @@ import 'isomorphic-fetch';
 interface GameState {
     gameId: string;
     gameData: Game;
-    scoreInput: number;
+    teamVsCountInput: number;
     loading: boolean;
     startAllowed: boolean;
     roundInputCount: number[];
     shuffledRoundIndex: number[];
+    webSocket: WebSocket;
 }
 
 var tempGame: Game = {
@@ -29,20 +30,20 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     constructor(props: any) {
         super(props);
         var pathGameId = this.props.location.pathname.substr(6);
-        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, scoreInput: 0, startAllowed: false, roundInputCount: [], shuffledRoundIndex: [] };
+        this.state = { gameId: pathGameId, gameData: tempGame, loading: true, teamVsCountInput: 2, startAllowed: false, roundInputCount: [], shuffledRoundIndex: [], webSocket: new WebSocket('ws://' + location.host + '/ws') };
 
-        fetch('api/game/' + this.state.gameId + '/all')
-            .then(response => response.json() as Promise<Game>)
-            .then(data => {
-                var roundCount = this.state.roundInputCount;
-                var updatedShuffeledRoundIndex = this.state.shuffledRoundIndex;
-                data.playingRounds.forEach((round, index) => {
-                    roundCount[round.id] = 0;
-                    updatedShuffeledRoundIndex[index] = index;
-                });
-                updatedShuffeledRoundIndex = this.shuffleArray(updatedShuffeledRoundIndex);
-                this.setState({ gameData: data, loading: false, roundInputCount: roundCount, shuffledRoundIndex: updatedShuffeledRoundIndex});
-            });
+        this.updateLocalGameData();
+
+        // Connection opened
+        this.state.webSocket.addEventListener('open', (event) => {
+            this.state.webSocket.send('Hello Server from Client');
+        });
+
+        // Listen for messages
+        this.state.webSocket.addEventListener('message', (event) => {
+            console.log('Message from server ', event.data);
+            this.updateLocalGameData();
+        });
     }
 
     public render() {
@@ -69,11 +70,13 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     private showPlayingRounds(rounds: Round[]) {
         if (rounds.length == 0) {
             return <form>
-                <div className="form-group">
-                    <input className="form-check-input" type="checkbox" id="inlineCheckbox1" onClick={() => { this.handelCheckbox() }} /> Teams correct (can not be changed later)
-                </div>
-                <div className="form-group">
-                    <button type="button" className="btn btn-block btn-primary" disabled={!this.state.startAllowed} onClick={() => { this.generatePlayingRounds() }}>Generated playing rounds</button>
+                <div className="row">
+                    <div className="form-group">
+                        <input className="form-check-input" type="checkbox" id="inlineCheckbox1" onClick={() => { this.handelCheckbox() }} /> Teams correct (can not be changed later)
+                    </div>
+                    <div className="form-group">
+                        <button type="button" className="btn btn-block btn-primary" disabled={!this.state.startAllowed} onClick={() => { this.generatePlayingRounds() }}>Generated playing rounds</button>
+                    </div>
                 </div>
             </form>
         }
@@ -180,6 +183,45 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
 
     handelCheckbox() {
         this.setState({ startAllowed: !this.state.startAllowed });
+    }
+
+    updateLocalGameData() {
+        fetch('api/game/' + this.state.gameId + '/all')
+            .then(response => response.json() as Promise<Game>)
+            .then(data => {
+                var roundCount = this.state.roundInputCount;
+                var updatedShuffeledRoundIndex = this.state.shuffledRoundIndex;
+                data.playingRounds.forEach((round, index) => {
+                    roundCount[round.id] = 0;
+                    updatedShuffeledRoundIndex[index] = index;
+                });
+                updatedShuffeledRoundIndex = this.shuffleArray(updatedShuffeledRoundIndex);
+                this.setState({ gameData: data, loading: false, roundInputCount: roundCount, shuffledRoundIndex: updatedShuffeledRoundIndex });
+            });
+    }
+
+    updateLocalRounds() {
+        fetch('api/' + this.state.gameId + '/round', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        }).then(response => {
+            return response.json();
+        }).then((response: Round[]) => {
+            console.log(JSON.stringify(response));
+            var gameDataUpdated = this.state.gameData;
+            gameDataUpdated.playingRounds = response;
+
+            var updatedShuffledRoundIndex = this.state.shuffledRoundIndex;
+            gameDataUpdated.playingRounds.forEach((round, index) => {
+                updatedShuffledRoundIndex[index] = index;
+            });
+            updatedShuffledRoundIndex = this.shuffleArray(updatedShuffledRoundIndex);
+
+            this.setState({ gameData: gameDataUpdated, shuffledRoundIndex: updatedShuffledRoundIndex });
+        });
     }
 
     generatePlayingRounds() {
