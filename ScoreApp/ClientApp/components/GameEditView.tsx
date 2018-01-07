@@ -1,142 +1,239 @@
 import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
+import { withRouter } from 'react-router';
 import 'isomorphic-fetch';
-import { withRouter } from 'react-router-dom'
 
 interface GameEditState {
-    games: Game[];
-    loadingState: number;
-    newGame: string;
-    possibleTeams: Team[];
-    newTeamName: string;
+    gameId: string;
+    gameData: Game;
+    generatedRounds: Round[];
+    teamVsCountInput: number;
+    loading: boolean;
+    gameStarted: boolean;
+    startAllowed: boolean;
+    inputTeamName: string;
 }
 
-export class GameEditView extends React.Component<RouteComponentProps<{}>, GameEditState> {
-    constructor(params: any) {
-        super(params);
-        this.state = { games: [], loadingState: 0, newGame: '', possibleTeams: [], newTeamName: '' };
+var tempGame: Game = {
+    id: 0,
+    created: '',
+    deleted: true,
+    ended: '',
+    name: 'test',
+    playingRounds: [],
+    started: '',
+    teams: []
+}
 
-        fetch('api/game')
-            .then(response => response.json() as Promise<Game[]>)
-            .then(data => {
-                this.setState({ games: data, loadingState: this.state.loadingState + 1 });
-            });
+
+export class GameEditView extends React.Component<RouteComponentProps<{}>, GameEditState> {
+    constructor(props: any) {
+        super(props);
+        var pathGameId = this.props.location.pathname.replace('gameedit/', '');
+        console.log(pathGameId);
+        this.state = {
+            gameId: pathGameId,
+            gameData: tempGame,
+            generatedRounds: [],
+            loading: true,
+            teamVsCountInput: 2,
+            gameStarted: false,
+            startAllowed: false,
+            inputTeamName: ''
+        };
+
+        this.updateLocalGameData();
     }
 
     public render() {
-        let contents = this.state.loadingState < 1
-            ? <p><em>Loading...</em></p>
-            : this.renderGameTable(this.state.games);
-
+        if (this.state.loading) {
+            return <p><em>Loading...</em></p>;
+        }
         return <div>
-            <h1>Edit Games</h1>
-            <p>Create, edit or delete Games.</p>
-            {contents}
-            <form>
-                <div className="form-group row">
-                    <div className="col-sm-6">
-                        <input type="text" className="form-control" value={this.state.newGame} onChange={this.handleChange.bind(this)}></input>
-                    </div>
-                    <button type="button" className="btn btn-primary col-sm-2" onClick={() => { this.addGame() }}>Add Game</button>
-                </div>
-            </form>
+            <h1>{this.state.gameData.name}</h1>
+            {this.renderTeamsEdit(this.state.gameData.teams, this.state.gameData.playingRounds)}
+            {this.renderPlayingRounds(this.state.generatedRounds, this.state.gameStarted)}
+            {this.renderPlayingRounds(this.state.gameData.playingRounds, this.state.gameStarted)}
         </div>;
     }
 
-    private renderGameTable(games: Game[]) {
-        return <table className='table'>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Created</th>
-                    <th>Edit</th>
-                    <th>Started</th>
-                    <th>Ended</th>
-                </tr>
-            </thead>
-            <tbody>
-            {games.map(game =>
-                <tr key={ game.id }>
-                        <td>{game.name}</td>
-                        <td>{this.niceDate(game.created)}</td>
-                        <td>
-                            <div className="input-group">
-                                <span className="input-group-btn">
-                                    <button className="btn btn-secondary" type="button" onClick={() => { this.props.history.push('/team/' + game.id) }}>Edit Team</button>
-                                </span>
-                            </div>
-                        </td>
-                        <td>{this.renderGameStart(game.id, game.started)}</td>
-                        <td>{this.renderGameEnd(game.id, game.ended)}</td>
-                </tr>
+    private renderTeamsEdit(teams: Team[], rounds: Round[]) {
+        return <div>
+            <h3>Edit Teams</h3>
+            <p>Create, edit or delete Teams.</p>
+            <table className='table table-condensed'>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>UpdateName</th>
+                        <th>Delete</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {teams.map(team =>
+                        <tr key={team.id}>
+                            <td>{team.name}</td>
+                            <td><button type="button" disabled={true} className='btn btn-xs btn-warn'>UpdateName</button></td>
+                            <td><button type="button" disabled={true} className='btn btn-xs btn-error'>Delete {team.name}</button></td>
+                        </tr>
+                    )}
+                    {this.state.gameStarted ? <tr></tr> : 
+                        <tr key={'AddTeamID'}>
+                            <td><input type="text" className="form-control input-xs" value={this.state.inputTeamName} onChange={(event) => this.setState({ inputTeamName: event.target.value })}></input></td>
+                            <td><button type="button" className="btn btn-primary" onClick={() => { this.addTeam() }}>Add Team</button></td>
+                            <td></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p>Playing teams: {teams.map(team => team.name).join(', ')}</p>
+        </div>;
+    }
+
+    private renderPlayingRounds(rounds: Round[], gameStarted: boolean) {
+        if (rounds.length == 0) {
+            return 
+        }
+        return <div>
+            <p>Rounds: {rounds.length}</p>
+            {rounds.map((round, index) => <div className="input-group" key={round.id + '_' + index}>
+                <span className="input-group-addon">{index}</span>
+                <input type="text" className="form-control" disabled={true} value={Object.keys(round.roundScores).map(teamId => this.getTeamName(parseInt(teamId))).join(' vs ')}></input>
+            </div>
             )}
-            </tbody>
-        </table>;
+            <br/>
+            <div className="btn-group btn-group-justified">
+                <a hrefLang="#" className="btn btn-primary" disabled={gameStarted} onClick={() => { this.setState({ generatedRounds: this.shuffleArray(this.state.generatedRounds) }) }}>Shuffle rounds</a>
+                <a hrefLang="#" className="btn btn-success" onClick={() => { this.startGame() }}>{gameStarted ? 'Play Game' : 'Start Game'}</a>
+            </div> 
+        </div>;
     }
 
-    private renderGameStart(gameId: number, gameStarted: string | undefined) {
-        if (gameStarted == '0001-01-01T00:00:00' || gameStarted == undefined) {
-            return <div></div>;
+    addTeam() {
+        if (this.state.gameStarted) {
+            return;
         }
-        return <span>{this.niceDate(gameStarted)}</span>
-    }
-
-    private renderGameEnd(gameId: number, gameEnded: string | undefined) {
-        if (gameEnded == '0001-01-01T00:00:00' || gameEnded == undefined) {
-            return <div className="input-group">
-                <span className="input-group-btn">
-                    <button className="btn btn-secondary" type="button" onClick={() => { this.startGame(gameId) }}>Play Game</button>
-                </span>
-            </div>;
-        }
-        return <span>{this.niceDate(gameEnded)}</span>
-    }
-
-    handleChange(event: any) {
-        console.log(event.target.value);
-        this.setState({ newGame: event.target.value });
-    }
-
-    setNewTeamName(event: any) {
-        console.log(event.target.value);
-        this.setState({ newTeamName: event.target.value });
-    }
-
-    addGame() {
-        var game: Game = {
+        var team: Team = {
             id: 0,
-            name: this.state.newGame,
-            created: '0001-01-01T00:00:00',
-            teams: [],
-            playingRounds: [],
+            name: this.state.inputTeamName,
+            gamesPlayed: 0,
+            gamesWon: 0,
             deleted: false
         };
-        fetch('api/Game', {
+        fetch('api/' + this.state.gameId + '/team', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(game),
+            body: JSON.stringify(team),
         }).then(response => {
             return response.json();
         }).then((response) => {
             console.log(JSON.stringify(response));
-            var newGames = this.state.games;
-            newGames.push(response);
-            this.setState({ games: newGames, newGame: '' });
+            this.updateLocalGameData();
         });
     }
 
-    startGame(gameId: number) {
-        this.props.history.push('/game/' + gameId);
-    }
-
-    private niceDate(dateString: string | undefined) {
-        if (dateString == undefined || typeof dateString == 'undefined') {
-            return '';
+    shuffleArray(array: any[]): any[] {
+        for (let i = array.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
         }
-        return dateString.replace('T', ' ').substring(0, 19)
+        return array;
     }
 
+    gameStarted(startTime: string | undefined): boolean {
+        return startTime != '' && startTime != '0001-01-01T00:00:00' && startTime != undefined
+    }
+
+    handelCheckbox() {
+        this.setState({ startAllowed: !this.state.startAllowed });
+    }
+
+    updateLocalGameData() {
+        fetch('api/game/' + this.state.gameId + '/all')
+            .then(response => response.json() as Promise<Game>)
+            .then(data => {
+                this.setState({ gameData: data, loading: false, gameStarted: this.gameStarted(data.started), inputTeamName: '' });
+                this.generatePlayingRounds();
+            });
+    }
+
+    generatePlayingRounds() {
+        if (this.state.gameStarted) {
+            this.setState({ generatedRounds: [] });
+            return;
+        }
+        var generatedRounds: Round[] = [];
+        let teams = this.state.gameData.teams;
+        for (var i = 0; i < teams.length; i++) {
+            for (var j = i + 1; j < teams.length; j++) {
+                var teamDict: Dictionary<number> = {};
+                teamDict[teams[i].id] = 0;
+                teamDict[teams[j].id] = 0;
+                var round: Round = {
+                    id: 0,
+                    roundScores: teamDict,
+                    roundScoresJSON: JSON.stringify(teamDict),
+                    played: false,
+                    deleted: false
+                }
+                generatedRounds.push(round);
+            }
+        }
+        generatedRounds = this.shuffleArray(generatedRounds);
+        this.setState({ generatedRounds: generatedRounds });
+    }
+
+    getTeamName(teamId: number): string {
+        var teamName = '';
+        this.state.gameData.teams.forEach(t => {
+            if (t.id == teamId) {
+                teamName = t.name;
+            }
+        });
+        return teamName;
+    }
+
+    startGame() {
+        if (this.state.gameStarted) {
+            this.props.history.push('/game/' + this.state.gameId)
+            return;
+        }
+        this.insertRounds(this.state.generatedRounds);
+        fetch('api/game/' + this.state.gameId + '/start', {
+            method: 'PUT',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        }).then(response => {
+            return response.json();
+        }).then((response) => {
+            console.log(JSON.stringify(response));
+            var gameDataUpdated = this.state.gameData;
+            gameDataUpdated.started = response.started
+            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
+            this.props.history.push('/game/' + this.state.gameId)
+        });
+    }
+
+    insertRounds(rounds: Round[]) {
+        fetch('api/' + this.state.gameId + '/round', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(rounds),
+        }).then(response => {
+            return response.json();
+        }).then((response: Round[]) => {
+            console.log(JSON.stringify(response));
+            var gameDataUpdated = this.state.gameData;
+            gameDataUpdated.playingRounds = response;
+            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
+        });
+    }
 }
