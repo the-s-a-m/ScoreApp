@@ -29,8 +29,8 @@ export class GameOverView extends React.Component<RouteComponentProps<{}>, GameO
             : this.renderGameTable(this.state.games);
 
         return <div>
-            <h1>Edit Games</h1>
-            <p>Create, edit or delete Games.</p>
+            <h1>Games</h1>
+            <p>Create, edit or play Games.</p>
             {contents}
             <form>
                 <div className="form-group row">
@@ -52,6 +52,7 @@ export class GameOverView extends React.Component<RouteComponentProps<{}>, GameO
                     <th>Edit</th>
                     <th>Started</th>
                     <th>Ended</th>
+                    <th>Results</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,12 +63,19 @@ export class GameOverView extends React.Component<RouteComponentProps<{}>, GameO
                         <td>
                             <div className="input-group">
                                 <span className="input-group-btn">
-                                    <button className="btn btn-xs btn-secondary" type="button" onClick={() => { this.props.history.push('/gameedit/' + game.id) }}>Edit Game</button>
+                                    <button className="btn btn-xs btn-secondary" type="button" disabled={this.gameStarted(game.started)} onClick={() => { this.props.history.push('/gameedit/' + game.id) }}>Edit Game</button>
                                 </span>
                             </div>
                         </td>
                         <td>{this.renderGameStart(game.id, game.started)}</td>
                         <td>{this.renderGameEnd(game.id, game.ended)}</td>
+                        <td>
+                            <div className="input-group">
+                                <span className="input-group-btn">
+                                    <button className="btn btn-xs btn-success" type="button" onClick={() => { this.startGame(game.id) }}>Play Game</button>
+                                </span>
+                            </div>
+                        </td>
                 </tr>
             )}
             </tbody>
@@ -83,13 +91,13 @@ export class GameOverView extends React.Component<RouteComponentProps<{}>, GameO
 
     private renderGameEnd(gameId: number, gameEnded: string | undefined) {
         if (gameEnded == '0001-01-01T00:00:00' || gameEnded == undefined) {
-            return <div className="input-group">
-                <span className="input-group-btn">
-                    <button className="btn btn-xs btn-secondary" type="button" onClick={() => { this.startGame(gameId) }}>Play Game</button>
-                </span>
-            </div>;
+            return <div></div>;
         }
         return <span>{this.niceDate(gameEnded)}</span>
+    }
+
+    gameStarted(startTime: string | undefined): boolean {
+        return startTime != '' && startTime != '0001-01-01T00:00:00' && startTime != undefined
     }
 
     handleChange(event: any) {

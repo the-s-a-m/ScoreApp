@@ -5,12 +5,10 @@ import 'isomorphic-fetch';
 
 interface GameState {
     gameId: string;
-    gameData: Game;
-    generatedRounds: Round[];
-    teamVsCountInput: number;
     loading: boolean;
-    startAllowed: boolean;
+    gameData: Game;
     roundInputCount: number[];
+    gameStarted: boolean;
     webSocket: WebSocket;
 }
 
@@ -29,15 +27,13 @@ var tempGame: Game = {
 export class GameView extends React.Component<RouteComponentProps<{}>, GameState> {
     constructor(props: any) {
         super(props);
-        var pathGameId = this.props.location.pathname.substr(6);
+        var pathGameId = this.props.location.pathname.replace('game/', '');
         this.state = {
             gameId: pathGameId,
-            gameData: tempGame,
-            generatedRounds: [],
             loading: true,
-            teamVsCountInput: 2,
-            startAllowed: false,
+            gameData: tempGame,
             roundInputCount: [],
+            gameStarted: false,
             webSocket: new WebSocket('ws://' + location.host + '/ws')
         };
 
@@ -55,38 +51,44 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         });
 
         //Bind functionkey press
-        this.escFunction = this.escFunction.bind(this);
+        this.keyEvents = this.keyEvents.bind(this);
     }
 
-    escFunction(event: any) {
+    keyEvents(event: any) {
+        //Key F11
         if (event.keyCode === 122) {
             console.log("change to presentation mode");
             this.props.history.push('/gameviewer/' + this.state.gameId);
         }
     }
     componentDidMount() {
-        document.addEventListener("keydown", this.escFunction, false);
+        document.addEventListener("keydown", this.keyEvents, false);
     }
     componentWillUnmount() {
-        document.removeEventListener("keydown", this.escFunction, false);
+        document.removeEventListener("keydown", this.keyEvents, false);
     }
 
     public render() {
-        let mainContent = this.state.loading
-            ? <p><em>Loading...</em></p>
-            : <div>
-                {this.gameStarted(this.state.gameData.started) ? this.showPlayingRounds(this.state.gameData.playingRounds, false) : this.showPlayingRounds(this.state.generatedRounds, true)}
-                {this.renderTeamsTable(this.state.gameData.teams)}
-              </div>
-
+        if (this.state.loading) {
+            return <p><em>Loading...</em></p>
+        }
+        if (!this.state.gameStarted) {
+            return <div>
+                <h1>{this.state.gameData.name}</h1>
+                <p><em>Game not started</em></p>
+            </div>
+        }
         return <div>
             <h1>{this.state.gameData.name}</h1>
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
-            {mainContent}
+            <div>
+                {this.renderPlayingRounds(this.state.gameData.playingRounds)}
+                {this.renderTeamsTable(this.state.gameData.teams)}
+            </div>
         </div>;
     }
 
-    private shuffleArray(array: any[]): any[] {
+    shuffleArray(array: any[]): any[] {
         for (let i = array.length - 1; i > 0; i--) {
             let j = Math.floor(Math.random() * (i + 1));
             [array[i], array[j]] = [array[j], array[i]];
@@ -94,36 +96,17 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         return array;
     }
 
-    private showPlayingRounds(rounds: Round[], disabledInput: boolean) {
+    private renderPlayingRounds(rounds: Round[]) {
         if (rounds.length == 0) {
-            return <div className="row">
-                    <div className="form-group">
-                        <input className="form-check-input" type="checkbox" id="inlineCheckbox1" onClick={() => { this.handelCheckbox() }} /> Teams correct (can not be changed later)
-                    </div>
-                    <div className="form-group">
-                        <button type="button" className="btn btn-block btn-primary" disabled={!this.state.startAllowed} onClick={() => { this.generatePlayingRounds() }}>Generated playing rounds</button>
-                    </div>
-                </div>
+            return <p>No rounds to play</p>
         }
-
-        const gameNotStartedContent = this.gameStarted(this.state.gameData.started) ? <div></div> :
-            <div className="row">
-                <div className="form-group">
-                    <button type="button" className="btn btn-block btn-primary" onClick={() => { this.setState({ generatedRounds: this.shuffleArray(this.state.generatedRounds)})}}>Shuffle rounds</button>
-                </div>
-                <div className="form-group">
-                    <button type="button" className="btn btn-block btn-success" onClick={() => { this.startGame() }}>Start Game</button>
-                </div>
-            </div>
-
         return <div>
-            {gameNotStartedContent}
             <p>Rounds: {rounds.length}</p>
-            {rounds.map((round, index) => this.renderScoreInput(round, index, disabledInput))}
+            {rounds.map((round, index) => this.renderScoreInput(round, index))}
         </div>;
     }
 
-    private renderScoreInput(round: Round, roundIndex: number, disabledInput: boolean) {
+    private renderScoreInput(round: Round, roundIndex: number) {
         const playingTeamsIDs = Object.keys(round.roundScores);
         var winningTeamId = 0;
         var winningTeamVal = -1;
@@ -145,31 +128,31 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                     <div key={round.id + '_' + teamId + '_' + index} className="col-sm-4">
                         <div className="input-group" >
                             <span className="input-group-addon">{this.getTeamName(parseInt(teamId))} </span>
-                            <input type="number" min="0" step="1" className="form-control" disabled={disabledInput || round.deleted || round.played} value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
+                            <input type="number" min="0" step="1" className="form-control" disabled={round.deleted || round.played} value={round.roundScores[teamId]} onChange={(event) => this.handleChange(event, round.id, parseInt(teamId))}></input>
                         </div>
                     </div>
                 )}
                 <span className="input-group-btn">
-                    <button type="button" className={'btn ' + buttonType} disabled={disabledInput || round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
+                    <button type="button" className={'btn ' + buttonType} disabled={round.deleted || round.played || this.state.roundInputCount[round.id] < playingTeamsIDs.length} onClick={() => { this.updateScore(round.id) }}>{buttonText}</button>
                 </span>
             </div>;
     }
 
     private renderTeamsTable(teams: Team[]) {
-        return <table className='table'>
+        return <table className='table table-condensed'>
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Games Played</th>
                     <th>Games Won</th>
+                    <th>Games Played</th>
                 </tr>
             </thead>
             <tbody>
                 {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
                     <tr key={team.id}>
                         <td>{team.name}</td>
-                        <td>{team.gamesPlayed}</td>
                         <td>{team.gamesWon}</td>
+                        <td>{team.gamesPlayed}</td>
                     </tr>
                 )}
             </tbody>
@@ -221,10 +204,6 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         this.setState({ gameData: gameInfo, roundInputCount: roundCount });
     }
 
-    handelCheckbox() {
-        this.setState({ startAllowed: !this.state.startAllowed });
-    }
-
     updateLocalGameData() {
         fetch('api/game/' + this.state.gameId + '/all')
             .then(response => response.json() as Promise<Game>)
@@ -233,7 +212,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                 data.playingRounds.forEach((round, index) => {
                     roundCount[round.id] = 0;
                 });
-                this.setState({ gameData: data, loading: false, roundInputCount: roundCount });
+                this.setState({ gameData: data, loading: false, roundInputCount: roundCount, gameStarted: this.gameStarted(data.started) });
             });
     }
 
@@ -254,28 +233,6 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
         });
     }
 
-    generatePlayingRounds() {
-        var generatedRounds: Round[] = [];
-        let teams = this.state.gameData.teams;
-        for (var i = 0; i < teams.length; i++) {
-            for (var j = i + 1; j < teams.length; j++) {
-                var teamDict: Dictionary<number> = {};
-                teamDict[teams[i].id] = 0;
-                teamDict[teams[j].id] = 0;
-                var round: Round = {
-                    id: 0,
-                    roundScores: teamDict,
-                    roundScoresJSON: JSON.stringify(teamDict),
-                    played: false,
-                    deleted: false
-                }
-                generatedRounds.push(round);
-            }
-        }
-        generatedRounds = this.shuffleArray(generatedRounds);
-        this.setState({ generatedRounds: generatedRounds });
-    }
-
     getTeamName(teamId: number): string {
         var teamName = '';
         this.state.gameData.teams.forEach(t => {
@@ -287,30 +244,10 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     }
 
     startGame() {
-        var gameStarted = this.state.gameData.started;
-        if (gameStarted != '' && gameStarted != '0001-01-01T00:00:00' && gameStarted != undefined) {
+        if (this.state.gameStarted) {
             return;
         }
-        this.insertRounds(this.state.generatedRounds);
         this.updateGameStarted();
-    }
-
-    insertRounds(rounds: Round[]) {
-        fetch('api/' + this.state.gameId + '/round', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(rounds),
-        }).then(response => {
-            return response.json();
-        }).then((response: Round[]) => {
-            console.log(JSON.stringify(response));
-            var gameDataUpdated = this.state.gameData;
-            gameDataUpdated.playingRounds = response;
-            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
-        });
     }
 
     updateGameStarted() {
@@ -326,7 +263,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             console.log(JSON.stringify(response));
             var gameDataUpdated = this.state.gameData;
             gameDataUpdated.started = response.started
-            this.setState({ gameData: gameDataUpdated, generatedRounds: [] });
+            this.setState({ gameData: gameDataUpdated });
         });
     }
 

@@ -5,8 +5,9 @@ import 'isomorphic-fetch';
 
 interface GameViewerState {
     gameId: string;
-    gameData: Game;
     loading: boolean;
+    gameData: Game;
+    gameStarted: boolean;
     webSocket: WebSocket;
 }
 
@@ -29,8 +30,9 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         console.log(pathGameId);
         this.state = {
             gameId: pathGameId,
-            gameData: tempGame,
             loading: true,
+            gameData: tempGame,
+            gameStarted: false,
             webSocket: new WebSocket('ws://' + location.host + '/ws')
         };
 
@@ -51,12 +53,6 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         this.keyEvents = this.keyEvents.bind(this);
     }
 
-    updateLocalGameData() {
-        fetch('api/game/' + this.state.gameId + '/all')
-            .then(response => response.json() as Promise<Game>)
-            .then(data => this.setState({ gameData: data, loading: false }));
-    }
-
     keyEvents(event: any) {
         //Key F11
         if (event.keyCode === 122) {
@@ -71,21 +67,33 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         document.removeEventListener("keydown", this.keyEvents, false);
     }
 
+    updateLocalGameData() {
+        fetch('api/game/' + this.state.gameId + '/all')
+            .then(response => response.json() as Promise<Game>)
+            .then(data => this.setState({ gameData: data, loading: false, gameStarted: this.gameStarted(data.started) }));
+    }
+
     public render() {
         if (this.state.loading) {
             return <p>Loading data</p>
+        }
+        if (!this.state.gameStarted) {
+            return <div>
+                <h1>{this.state.gameData.name}</h1>
+                <p><em>Game not started</em></p>
+            </div>
         }
         return <div>
             <h1>{this.state.gameData.name}</h1>
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
             <div>
-                {this.showPlayingRounds(this.state.gameData.playingRounds, false)}
+                {this.renderPlayingRounds(this.state.gameData.playingRounds)}
                 {this.renderTeamsTable(this.state.gameData.teams)}
             </div>
         </div>;
     }
 
-    private showPlayingRounds(rounds: Round[], disabledInput: boolean) {
+    private renderPlayingRounds(rounds: Round[]) {
         if (rounds.length == 0) {
             return <div className="row">
                 <span> not playing rounds </span>
@@ -93,7 +101,11 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         }
         return <div>
             <p>Rounds: {rounds.length}</p>
-            {rounds.map((round, index) => this.renderPresentationMode(round, index))}
+            <table className="table" >
+                <tbody>
+                    {rounds.map((round, index) => this.renderPresentationMode(round, index))}
+                </tbody>
+            </table>
         </div>;
     }
 
@@ -112,21 +124,20 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
                 sameScoreCount++;
             }
         });
-        const buttonText = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
-        const buttonType = round.deleted ? 'btn-default' : round.played ? sameScoreCount > 0 ? 'btn-info' : 'btn-success' : 'btn-primary';
-        return <div className="row" key={round.id + '_' + roundIndex}>
+        const currentState = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
+        const labelType = round.deleted ? 'label-default' : round.played ? sameScoreCount > 0 ? 'label-info' : 'label-success' : 'label-primary';
+        return <tr key={round.id + '_' + roundIndex}>
             {playingTeamsIDs.map((teamId, index) =>
-                <div key={round.id + '_' + teamId + '_' + index} className="col-sm-4">
-                    <div className="input-group" >
-                        <span className="input-group-addon">{this.getTeamName(parseInt(teamId))} </span>
-                        <input type="number" min="0" step="1" className="form-control input-lg" disabled={true} value={round.roundScores[teamId]}></input>
-                    </div>
-                </div>
+                <td key={round.id + '_' + roundIndex + '_' + index}>
+                    <span>
+                        {this.getTeamName(parseInt(teamId))}&nbsp;
+                        <small className={'label ' + labelType}>{round.roundScores[teamId]}</small>
+                    </span>
+                </td>
             )}
-            <span className="input-group-btn">
-                <button type="button" className={'btn ' + buttonType} disabled={true}>{buttonText}</button>
-            </span>
-        </div>;
+            <td><small className={'label ' + labelType}>{currentState}</small></td>
+        </tr>;
+            
     }
 
     private renderTeamsTable(teams: Team[]) {
