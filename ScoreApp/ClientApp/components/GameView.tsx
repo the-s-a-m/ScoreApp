@@ -27,7 +27,7 @@ var tempGame: Game = {
 export class GameView extends React.Component<RouteComponentProps<{}>, GameState> {
     constructor(props: any) {
         super(props);
-        var pathGameId = this.props.location.pathname.replace('game/', '');
+        var pathGameId = this.props.location.pathname.replace('/game/', '');
         this.state = {
             gameId: pathGameId,
             loading: true,
@@ -57,7 +57,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     keyEvents(event: any) {
         //Key F11
         if (event.keyCode === 122) {
-            console.log("change to presentation mode");
+            console.log('change to presentation mode /gameviewer/' + this.state.gameId);
             this.props.history.push('/gameviewer/' + this.state.gameId);
         }
     }

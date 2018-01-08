@@ -26,7 +26,7 @@ var tempGame: Game = {
 export class GameViewerView extends React.Component<RouteComponentProps<{}>, GameViewerState> {
     constructor(props: any) {
         super(props);
-        var pathGameId = this.props.location.pathname.substr(12);
+        var pathGameId = this.props.location.pathname.replace('/gameviewer/','');
         console.log(pathGameId);
         this.state = {
             gameId: pathGameId,
@@ -56,7 +56,7 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
     keyEvents(event: any) {
         //Key F11
         if (event.keyCode === 122) {
-            console.log("switch to GameView");
+            console.log('switch to GameView /game/' + this.state.gameId);
             this.props.history.push('/game/' + this.state.gameId);
         }
     }

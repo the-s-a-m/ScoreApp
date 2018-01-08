@@ -29,7 +29,7 @@ var tempGame: Game = {
 export class GameEditView extends React.Component<RouteComponentProps<{}>, GameEditState> {
     constructor(props: any) {
         super(props);
-        var pathGameId = this.props.location.pathname.replace('gameedit/', '');
+        var pathGameId = this.props.location.pathname.replace('/gameedit/', '');
         console.log(pathGameId);
         this.state = {
             gameId: pathGameId,
