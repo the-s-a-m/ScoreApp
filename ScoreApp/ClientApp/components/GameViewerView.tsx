@@ -101,7 +101,7 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         }
         return <div>
             <p>Rounds: {rounds.length}</p>
-            <table className="table" >
+            <table className="table table-condensed" >
                 <tbody>
                     {rounds.map((round, index) => this.renderPresentationMode(round, index))}
                 </tbody>
@@ -125,17 +125,19 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
             }
         });
         const currentState = round.deleted ? 'Deleted' : round.played ? sameScoreCount > 0 ? 'Drawn' : this.getTeamName(winningTeamId) + ' Won' : 'Set scores';
-        const labelType = round.deleted ? 'label-default' : round.played ? sameScoreCount > 0 ? 'label-info' : 'label-success' : 'label-primary';
+        const labelType = round.deleted ? '-default' : round.played ? sameScoreCount > 0 ? '-info' : '-success' : '-primary';
         return <tr key={round.id + '_' + roundIndex}>
-            {playingTeamsIDs.map((teamId, index) =>
-                <td key={round.id + '_' + roundIndex + '_' + index}>
-                    <span>
-                        {this.getTeamName(parseInt(teamId))}&nbsp;
-                        <small className={'label ' + labelType}>{round.roundScores[teamId]}</small>
-                    </span>
-                </td>
-            )}
-            <td><small className={'label ' + labelType}>{currentState}</small></td>
+            <td>
+                <h2 className="text-center" style={{ marginTop: 0.01 + "em", marginBottom: 0.01 + "em" }}>
+                    {playingTeamsIDs.map(teamId => this.getTeamName(parseInt(teamId))).join(' : ')}
+                </h2>
+            </td>
+            <td>
+                <h2 className="text-center" style={{ marginTop: 0.01 + "em", marginBottom: 0.01 + "em" }}>
+                    {playingTeamsIDs.map(teamId => round.roundScores[teamId]).join(' : ')}
+                </h2>
+            </td>
+            <td><button type="button" className={'btn btn' + labelType}>{currentState}</button></td>
         </tr>;
             
     }
