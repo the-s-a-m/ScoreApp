@@ -83,6 +83,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
             <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
             <div>
                 {this.renderPlayingRounds(this.state.gameData.playingRounds)}
+                <p></p>
                 {this.renderTeamsTable(this.state.gameData.teams)}
             </div>
         </div>;
@@ -139,7 +140,7 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
     }
 
     private renderTeamsTable(teams: Team[]) {
-        return <table className='table table-condensed'>
+        return <table className='table table-bordered table-condensed'>
             <thead>
                 <tr>
                     <th>Name</th>
@@ -148,8 +149,8 @@ export class GameView extends React.Component<RouteComponentProps<{}>, GameState
                 </tr>
             </thead>
             <tbody>
-                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
-                    <tr key={team.id}>
+                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map((team, index) =>
+                    <tr key={team.id} className={(index == 0) ? 'success' : (index == 1) ? 'info' : (index == 2) ? 'warning' : ''}>
                         <td>{team.name}</td>
                         <td>{team.gamesWon}</td>
                         <td>{team.gamesPlayed}</td>

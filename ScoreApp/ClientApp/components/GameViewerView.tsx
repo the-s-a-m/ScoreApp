@@ -22,6 +22,8 @@ var tempGame: Game = {
     teams: []
 }
 
+const h2Style = { marginTop: 0.01 + "em", marginBottom: 0.01 + "em" }
+
 
 export class GameViewerView extends React.Component<RouteComponentProps<{}>, GameViewerState> {
     constructor(props: any) {
@@ -78,17 +80,19 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
             return <p>Loading data</p>
         }
         if (!this.state.gameStarted) {
-            return <div>
+            return <div className="jumbotron">
                 <h1>{this.state.gameData.name}</h1>
                 <p><em>Game not started</em></p>
             </div>
         }
         return <div>
-            <h1>{this.state.gameData.name}</h1>
-            <p>Playing teams: {this.state.gameData.teams.map(team => team.name).join(', ')}</p>
+            <div className="jumbotron">
+                <h1>{this.state.gameData.name}</h1>
+                <p>Rounds: {this.state.gameData.playingRounds.length}</p>
+            </div>
             <div>
-                {this.renderPlayingRounds(this.state.gameData.playingRounds)}
                 {this.renderTeamsTable(this.state.gameData.teams)}
+                {this.renderPlayingRounds(this.state.gameData.playingRounds)}
             </div>
         </div>;
     }
@@ -100,7 +104,7 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
             </div>
         }
         return <div>
-            <p>Rounds: {rounds.length}</p>
+            
             <table className="table table-condensed" >
                 <tbody>
                     {rounds.map((round, index) => this.renderPresentationMode(round, index))}
@@ -128,12 +132,12 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
         const labelType = round.deleted ? '-default' : round.played ? sameScoreCount > 0 ? '-info' : '-success' : '-primary';
         return <tr key={round.id + '_' + roundIndex}>
             <td>
-                <h2 className="text-center" style={{ marginTop: 0.01 + "em", marginBottom: 0.01 + "em" }}>
+                <h2 className="text-center" style={h2Style}>
                     {playingTeamsIDs.map(teamId => this.getTeamName(parseInt(teamId))).join(' : ')}
                 </h2>
             </td>
             <td>
-                <h2 className="text-center" style={{ marginTop: 0.01 + "em", marginBottom: 0.01 + "em" }}>
+                <h2 className="text-center" style={h2Style}>
                     {playingTeamsIDs.map(teamId => round.roundScores[teamId]).join(' : ')}
                 </h2>
             </td>
@@ -143,20 +147,20 @@ export class GameViewerView extends React.Component<RouteComponentProps<{}>, Gam
     }
 
     private renderTeamsTable(teams: Team[]) {
-        return <table className='table'>
+        return <table className='table table-bordered table-condensed table-responsive'>
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Games Played</th>
-                    <th>Games Won</th>
+                    <th><h2 style={h2Style}>Team</h2></th>
+                    <th><h2 style={h2Style}>Games Won</h2></th>
+                    <th><h2 style={h2Style}>Games Played</h2></th>
                 </tr>
             </thead>
             <tbody>
-                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map(team =>
-                    <tr key={team.id}>
-                        <td>{team.name}</td>
-                        <td>{team.gamesPlayed}</td>
-                        <td>{team.gamesWon}</td>
+                {teams.sort((a: Team, b: Team) => b.gamesWon - a.gamesWon).map((team, index) =>
+                    <tr key={team.id} className={(index == 0) ? 'success' : (index == 1) ? 'info' : (index == 2) ? 'warning' : '' }>
+                        <td><h3 style={h2Style}>{team.name}</h3></td>
+                        <td><h3 style={h2Style}>{team.gamesWon}</h3></td>
+                        <td><h3 style={h2Style}>{team.gamesPlayed}</h3></td>
                     </tr>
                 )}
             </tbody>
